@@ -1,0 +1,516 @@
+--Table: articles
+
+--DROP TABLE articles;
+
+CREATE TABLE IF NOT EXISTS articles (
+  ID            integer PRIMARY KEY NOT NULL,
+  title         nvarchar(200),
+  thumb         nvarchar(100),
+  excerpt       nvarchar(200),
+  body          text,
+  dateFrom1970  integer
+);
+
+CREATE INDEX IF NOT EXISTS articles_Index01
+  ON articles
+  (dateFrom1970);
+
+CREATE TRIGGER IF NOT EXISTS articles_au_fkr_favorites
+  AFTER UPDATE OF ID
+  ON articles
+BEGIN
+  SELECT CASE
+    WHEN (SELECT 1 FROM favorites WHERE articleID = OLD.ID) IS NOT NULL
+    THEN RAISE(ABORT, 'UPDATE statement conflicted with COLUMN REFERENCE constraint [favorites -> articles].')
+  END;
+END;
+
+CREATE TRIGGER IF NOT EXISTS articles_au_fkr_latest
+  AFTER UPDATE OF ID
+  ON articles
+BEGIN
+  SELECT CASE
+    WHEN (SELECT 1 FROM latest WHERE articleID = OLD.ID) IS NOT NULL
+    THEN RAISE(ABORT, 'UPDATE statement conflicted with COLUMN REFERENCE constraint [latest -> articles].')
+  END;
+END;
+
+CREATE TRIGGER IF NOT EXISTS articles_au_fkr_search
+  AFTER UPDATE OF ID
+  ON articles
+BEGIN
+  SELECT CASE
+    WHEN (SELECT 1 FROM search WHERE articleID = OLD.ID) IS NOT NULL
+    THEN RAISE(ABORT, 'UPDATE statement conflicted with COLUMN REFERENCE constraint [search -> articles].')
+  END;
+END;
+
+CREATE TRIGGER IF NOT EXISTS articles_au_fkr_topnews
+  AFTER UPDATE OF ID
+  ON articles
+BEGIN
+  SELECT CASE
+    WHEN (SELECT 1 FROM topnews WHERE articleID = OLD.ID) IS NOT NULL
+    THEN RAISE(ABORT, 'UPDATE statement conflicted with COLUMN REFERENCE constraint [topnews -> articles].')
+  END;
+END;
+
+CREATE TRIGGER IF NOT EXISTS articles_bd_fkr_favorites
+  BEFORE DELETE
+  ON articles
+BEGIN
+  SELECT CASE
+    WHEN (SELECT 1 FROM favorites WHERE articleID = OLD.ID) IS NOT NULL
+    THEN RAISE(ABORT, 'DELETE statement conflicted with COLUMN REFERENCE constraint [favorites -> articles].')
+  END;
+END;
+
+CREATE TRIGGER IF NOT EXISTS articles_bd_fkr_latest
+  BEFORE DELETE
+  ON articles
+BEGIN
+  SELECT CASE
+    WHEN (SELECT 1 FROM latest WHERE articleID = OLD.ID) IS NOT NULL
+    THEN RAISE(ABORT, 'DELETE statement conflicted with COLUMN REFERENCE constraint [latest -> articles].')
+  END;
+END;
+
+CREATE TRIGGER IF NOT EXISTS articles_bd_fkr_search
+  BEFORE DELETE
+  ON articles
+BEGIN
+  SELECT CASE
+    WHEN (SELECT 1 FROM search WHERE articleID = OLD.ID) IS NOT NULL
+    THEN RAISE(ABORT, 'DELETE statement conflicted with COLUMN REFERENCE constraint [search -> articles].')
+  END;
+END;
+
+CREATE TRIGGER IF NOT EXISTS articles_bd_fkr_topnews
+  BEFORE DELETE
+  ON articles
+BEGIN
+  SELECT CASE
+    WHEN (SELECT 1 FROM topnews WHERE articleID = OLD.ID) IS NOT NULL
+    THEN RAISE(ABORT, 'DELETE statement conflicted with COLUMN REFERENCE constraint [topnews -> articles].')
+  END;
+END;
+
+
+--Table: latest
+
+--DROP TABLE latest;
+
+CREATE TABLE IF NOT EXISTS latest (
+  ID         integer PRIMARY KEY AUTOINCREMENT NOT NULL,
+  articleID  integer NOT NULL UNIQUE,
+  /* Foreign keys */
+  FOREIGN KEY (articleID)
+    REFERENCES articles(ID)
+);
+
+--View: view_latest
+
+--DROP VIEW view_latest;
+
+CREATE VIEW IF NOT EXISTS view_latest
+AS
+SELECT 
+  latest.ID AS ID,
+  latest.articleID AS articleID,
+  articles.dateFrom1970 AS dateFrom1970
+FROM 
+  latest
+  LEFT OUTER JOIN articles ON (latest.articleID = articles.ID);
+
+CREATE TRIGGER IF NOT EXISTS latest_Trigger_add
+  AFTER INSERT
+  ON latest
+BEGIN
+  /* Insert trigger body here */
+  DELETE FROM
+  latest
+  WHERE
+  ID
+  IN(
+  SELECT
+  ID
+  FROM
+  view_latest
+  order by dateFrom1970 desc
+  LIMIT 250,-1
+  );
+END;
+
+CREATE TRIGGER IF NOT EXISTS latest_Trigger_delete
+  AFTER DELETE
+  ON latest
+BEGIN
+  /* Insert trigger body here */
+  /*DELETE FROM articles WHERE ID = OLD.articleID;*/
+DELETE FROM 
+articles 
+WHERE
+ID = OLD.articleID
+AND
+NOT EXISTS(
+SELECT
+*
+FROM
+topnews
+WHERE
+articleID = OLD.articleID
+)
+AND
+NOT EXISTS(
+SELECT
+*
+FROM
+favorites
+WHERE
+articleID = OLD.articleID
+)
+AND
+NOT EXISTS(
+SELECT
+*
+FROM
+search
+WHERE
+articleID = OLD.articleID
+);
+
+END;
+
+CREATE TRIGGER IF NOT EXISTS latest_bi_fk_articles
+  BEFORE INSERT
+  ON latest
+BEGIN
+  SELECT CASE
+    WHEN (SELECT 1 FROM articles WHERE articles.ID = NEW.articleID) IS NULL
+    THEN RAISE(ABORT, 'INSERT statement conflicted with COLUMN REFERENCE constraint [latest -> articles].')
+  END;
+END;
+
+CREATE TRIGGER IF NOT EXISTS latest_bu_fk_articles
+  BEFORE UPDATE OF articleID
+  ON latest
+BEGIN
+  SELECT CASE
+    WHEN (SELECT 1 FROM articles WHERE articles.ID = NEW.articleID) IS NULL
+    THEN RAISE(ABORT, 'UPDATE statement conflicted with COLUMN REFERENCE constraint [latest -> articles].')
+  END;
+END;
+
+
+
+--Table: topnews
+
+--DROP TABLE topnews;
+
+CREATE TABLE IF NOT EXISTS topnews (
+  ID         integer PRIMARY KEY AUTOINCREMENT NOT NULL,
+  articleID  integer NOT NULL UNIQUE,
+  /* Foreign keys */
+  FOREIGN KEY (articleID)
+    REFERENCES articles(ID)
+);
+
+--View: view_topnews
+
+--DROP VIEW view_topnews;
+
+CREATE VIEW IF NOT EXISTS view_topnews
+AS
+SELECT 
+  topnews.ID AS ID,
+  topnews.articleID AS articleID,
+  articles.dateFrom1970 AS dateFrom1970
+FROM 
+  topnews
+  LEFT OUTER JOIN articles ON (topnews.articleID = articles.ID);
+  
+  
+CREATE TRIGGER IF NOT EXISTS topnews_Trigger_add
+  AFTER INSERT
+  ON topnews
+BEGIN
+  /* Insert trigger body here */
+  DELETE FROM
+  topnews
+  WHERE
+  ID
+  IN(
+  SELECT
+  ID
+  FROM
+  view_topnews
+  order by dateFrom1970 desc
+  LIMIT 250,-1
+  );
+END;
+
+CREATE TRIGGER IF NOT EXISTS topnews_Trigger_delete
+  AFTER DELETE
+  ON topnews
+BEGIN
+  /* Insert trigger body here */
+DELETE FROM 
+articles 
+WHERE
+ID = OLD.articleID
+AND
+NOT EXISTS(
+SELECT
+*
+FROM
+latest
+WHERE
+articleID = OLD.articleID
+)
+AND
+NOT EXISTS(
+SELECT
+*
+FROM
+favorites
+WHERE
+articleID = OLD.articleID
+)
+AND
+NOT EXISTS(
+SELECT
+*
+FROM
+search
+WHERE
+articleID = OLD.articleID
+);
+END;
+
+CREATE TRIGGER IF NOT EXISTS topnews_bi_fk_articles
+  BEFORE INSERT
+  ON topnews
+BEGIN
+  SELECT CASE
+    WHEN (SELECT 1 FROM articles WHERE articles.ID = NEW.articleID) IS NULL
+    THEN RAISE(ABORT, 'INSERT statement conflicted with COLUMN REFERENCE constraint [topnews -> articles].')
+  END;
+END;
+
+CREATE TRIGGER IF NOT EXISTS topnews_bu_fk_articles
+  BEFORE UPDATE OF articleID
+  ON topnews
+BEGIN
+  SELECT CASE
+    WHEN (SELECT 1 FROM articles WHERE articles.ID = NEW.articleID) IS NULL
+    THEN RAISE(ABORT, 'UPDATE statement conflicted with COLUMN REFERENCE constraint [topnews -> articles].')
+  END;
+END;
+
+--Table: search
+
+--DROP TABLE search;
+
+CREATE TABLE IF NOT EXISTS search (
+  ID         integer PRIMARY KEY AUTOINCREMENT NOT NULL,
+  articleID  integer NOT NULL UNIQUE,
+  /* Foreign keys */
+  FOREIGN KEY (articleID)
+    REFERENCES articles(ID)
+);
+
+--View: view_search
+
+--DROP VIEW view_search;
+
+CREATE VIEW IF NOT EXISTS view_search
+AS
+SELECT 
+  search.ID AS ID,
+  search.articleID AS articleID,
+  articles.dateFrom1970 AS dateFrom1970
+FROM 
+  search
+  LEFT OUTER JOIN articles ON (search.articleID = articles.ID);
+
+CREATE TRIGGER IF NOT EXISTS search_Trigger_add
+  AFTER INSERT
+  ON search
+BEGIN
+  /* Insert trigger body here */
+  DELETE FROM
+  search
+  WHERE
+  ID
+  IN(
+  SELECT
+  ID
+  FROM
+  view_search
+  order by dateFrom1970 desc
+  LIMIT 250,-1
+  );
+END;
+
+CREATE TRIGGER IF NOT EXISTS search_Trigger_delete
+  AFTER DELETE
+  ON search
+BEGIN
+  /* Insert trigger body here */
+DELETE FROM 
+articles 
+WHERE
+ID = OLD.articleID
+AND
+NOT EXISTS(
+SELECT
+*
+FROM
+latest
+WHERE
+articleID = OLD.articleID
+)
+AND
+NOT EXISTS(
+SELECT
+*
+FROM
+favorites
+WHERE
+articleID = OLD.articleID
+)
+AND
+NOT EXISTS(
+SELECT
+*
+FROM
+topnews
+WHERE
+articleID = OLD.articleID
+);
+END;
+
+CREATE TRIGGER IF NOT EXISTS search_bi_fk_articles
+  BEFORE INSERT
+  ON search
+BEGIN
+  SELECT CASE
+    WHEN (SELECT 1 FROM articles WHERE articles.ID = NEW.articleID) IS NULL
+    THEN RAISE(ABORT, 'INSERT statement conflicted with COLUMN REFERENCE constraint [search -> articles].')
+  END;
+END;
+
+CREATE TRIGGER IF NOT EXISTS search_bu_fk_articles
+  BEFORE UPDATE OF articleID
+  ON search
+BEGIN
+  SELECT CASE
+    WHEN (SELECT 1 FROM articles WHERE articles.ID = NEW.articleID) IS NULL
+    THEN RAISE(ABORT, 'UPDATE statement conflicted with COLUMN REFERENCE constraint [search -> articles].')
+  END;
+END;
+
+
+--Table: favorites
+
+--DROP TABLE favorites;
+
+CREATE TABLE IF NOT EXISTS favorites (
+  ID         integer PRIMARY KEY AUTOINCREMENT NOT NULL,
+  articleID  integer NOT NULL UNIQUE,
+  /* Foreign keys */
+  FOREIGN KEY (articleID)
+    REFERENCES articles(ID)
+);
+
+--View: view_favorites
+
+--DROP VIEW view_favorites;
+
+CREATE VIEW IF NOT EXISTS view_favorites
+AS
+SELECT 
+  favorites.ID AS ID,
+  favorites.articleID AS articleID,
+  articles.dateFrom1970 AS dateFrom1970
+FROM 
+  favorites
+  LEFT OUTER JOIN articles ON (favorites.articleID = articles.ID);
+  
+
+CREATE TRIGGER IF NOT EXISTS favorites_Trigger_add
+  AFTER INSERT
+  ON favorites
+BEGIN
+  /* Insert trigger body here */
+  DELETE FROM
+  favorites
+  WHERE
+  ID
+  IN(
+  SELECT
+  ID
+  FROM
+  view_favorites
+  order by dateFrom1970 desc
+  LIMIT 250,-1
+  );
+END;
+
+CREATE TRIGGER IF NOT EXISTS favorites_Trigger_delete
+  AFTER DELETE
+  ON favorites
+BEGIN
+  /* Insert trigger body here */
+DELETE FROM 
+articles 
+WHERE
+ID = OLD.articleID
+AND
+NOT EXISTS(
+SELECT
+*
+FROM
+topnews
+WHERE
+articleID = OLD.articleID
+)
+AND
+NOT EXISTS(
+SELECT
+*
+FROM
+latest
+WHERE
+articleID = OLD.articleID
+)
+AND
+NOT EXISTS(
+SELECT
+*
+FROM
+search
+WHERE
+articleID = OLD.articleID
+);
+END;
+
+CREATE TRIGGER IF NOT EXISTS favorites_bi_fk_articles
+  BEFORE INSERT
+  ON favorites
+BEGIN
+  SELECT CASE
+    WHEN (SELECT 1 FROM articles WHERE articles.ID = NEW.articleID) IS NULL
+    THEN RAISE(ABORT, 'INSERT statement conflicted with COLUMN REFERENCE constraint [favorites -> articles].')
+  END;
+END;
+
+CREATE TRIGGER IF NOT EXISTS favorites_bu_fk_articles
+  BEFORE UPDATE OF articleID
+  ON favorites
+BEGIN
+  SELECT CASE
+    WHEN (SELECT 1 FROM articles WHERE articles.ID = NEW.articleID) IS NULL
+    THEN RAISE(ABORT, 'UPDATE statement conflicted with COLUMN REFERENCE constraint [favorites -> articles].')
+  END;
+END;

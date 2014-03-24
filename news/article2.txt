@@ -1,0 +1,38 @@
+
+<style type="text/css">
+<!--
+.text_center {
+    font-family:HelveticaNeue;
+	text-align: center;
+    font-size: 16pt;
+    font-weight:bold;
+}
+.image_center {
+	text-align: center;
+	line-height: 10;
+	margin: 0cm 0cm 0cm 0cm;
+}
+.time_css {
+    font-family:HelveticaNeue;
+	text-align: right;
+	font-size: 10pt;
+	color: #999;
+	line-height: 0px;
+    font-weight: normal;
+	margin: 15px 0cm 5px 0cm;
+}
+.body_css {
+    font-family:HelveticaNeue;
+	text-align: left;
+    font-size: 12pt;
+	color: #333;
+	margin: 0cm 0cm 0cm 0cm;
+}
+-->
+</style>
+<body>
+<h3 class="text_center">%@</h3>
+<p class="text_center"><img src="%@" width="200" height="200" /></p>
+<p class="time_css">%@</p>
+<p class="body_css">%@</p>
+</body>

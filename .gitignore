@@ -1,0 +1,14 @@
+
+*.xcuserstate
+
+*.pbxuser
+
+*.mode1v3
+
+*.xcscheme
+
+*.xcbkptlist
+
+news.xcodeproj/xcuserdata/zhengying.xcuserdatad/xcschemes/xcschememanagement.plist
+
+news.xcodeproj/xcuserdata/perry.xcuserdatad/xcschemes/xcschememanagement.plist
